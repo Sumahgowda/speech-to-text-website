@@ -1,0 +1,651 @@
+<!DOCTYPE html>
+<html>
+<head>
+
+    <title>AI Speech-to-Text</title>
+
+    <style>
+
+        body{
+            margin:0;
+            font-family:Arial;
+            background:linear-gradient(135deg,#6a11cb,#2575fc);
+            height:100vh;
+            display:flex;
+            justify-content:center;
+            align-items:center;
+        }
+
+        .container{
+
+            width:450px;
+            background:white;
+            border-radius:20px;
+            padding:30px;
+            box-shadow:0px 0px 20px rgba(0,0,0,0.3);
+
+            position:relative;
+        }
+
+        h2,h3{
+            text-align:center;
+            color:#333;
+        }
+
+        input{
+
+            width:100%;
+            padding:12px;
+            margin-top:12px;
+            border-radius:10px;
+            border:1px solid #ccc;
+            font-size:16px;
+            box-sizing:border-box;
+        }
+
+        button{
+
+            padding:12px 20px;
+            border:none;
+            border-radius:10px;
+            cursor:pointer;
+            font-size:16px;
+            color:white;
+            margin-top:10px;
+        }
+
+        .blue{
+            background:#2575fc;
+        }
+
+        .green{
+            background:#28a745;
+        }
+
+        .red{
+            background:#dc3545;
+        }
+
+        .purple{
+            background:#6f42c1;
+        }
+
+        .orange{
+            background:#fd7e14;
+        }
+
+        #output{
+
+            margin-top:20px;
+            font-size:20px;
+            color:#2575fc;
+            font-weight:bold;
+            text-align:center;
+        }
+
+        #status{
+
+            text-align:center;
+            font-size:18px;
+            margin-top:10px;
+        }
+
+        #speechSection{
+
+            display:none;
+        }
+
+        #registerSection{
+
+            display:none;
+        }
+
+        .topButtons{
+
+            display:flex;
+            justify-content:space-between;
+            margin-bottom:20px;
+        }
+
+        #historyBox{
+
+            margin-top:20px;
+            max-height:250px;
+            overflow:auto;
+            border:1px solid #ccc;
+            border-radius:10px;
+            padding:10px;
+            display:none;
+        }
+
+        .historyItem{
+
+            background:#f5f5f5;
+            padding:10px;
+            border-radius:10px;
+            margin-bottom:10px;
+        }
+
+        .passwordContainer{
+
+            position:relative;
+        }
+
+        .eye{
+
+            position:absolute;
+            right:15px;
+            top:22px;
+            cursor:pointer;
+            font-size:18px;
+        }
+
+    </style>
+
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>🎤 AI Speech-to-Text</h2>
+
+    <!-- LOGIN -->
+
+    <div id="loginSection">
+
+        <h3>Login</h3>
+
+        <input
+            type="email"
+            id="loginEmail"
+            placeholder="Email"
+        >
+
+        <div class="passwordContainer">
+
+            <input
+                type="password"
+                id="loginPassword"
+                placeholder="Password"
+            >
+
+            <span
+                class="eye"
+                onclick="toggleLoginPassword()"
+            >
+                👁️
+            </span>
+
+        </div>
+
+        <button
+            class="blue"
+            onclick="login()"
+            style="width:100%;"
+        >
+            Login
+        </button>
+
+        <button
+            class="purple"
+            onclick="showRegister()"
+            style="width:100%;"
+        >
+            Create Account
+        </button>
+
+    </div>
+
+    <!-- REGISTER -->
+
+    <div id="registerSection">
+
+        <h3>Create Account</h3>
+
+        <input
+            type="email"
+            id="registerEmail"
+            placeholder="Email"
+        >
+
+        <div class="passwordContainer">
+
+            <input
+                type="password"
+                id="registerPassword"
+                placeholder="Create Strong Password"
+
+                pattern="(?=.*\d)(?=.*[a-z])(?=.*[A-Z])(?=.*[@$!%*?&]).{8,}"
+
+                title="Password must contain:
+- Minimum 8 characters
+- One uppercase letter
+- One lowercase letter
+- One number
+- One special character"
+            >
+
+            <span
+                class="eye"
+                onclick="toggleRegisterPassword()"
+            >
+                👁️
+            </span>
+
+        </div>
+
+        <button
+            class="green"
+            onclick="register()"
+            style="width:100%;"
+        >
+            Register
+        </button>
+
+        <button
+            class="orange"
+            onclick="showLogin()"
+            style="width:100%;"
+        >
+            Back to Login
+        </button>
+
+    </div>
+
+    <!-- SPEECH SECTION -->
+
+    <div id="speechSection">
+
+        <div class="topButtons">
+
+            <button
+                class="red"
+                onclick="logout()"
+            >
+                Logout
+            </button>
+
+            <button
+                class="purple"
+                onclick="toggleHistory()"
+            >
+                History
+            </button>
+
+        </div>
+
+        <h3 id="welcomeText"></h3>
+
+        <button
+            class="green"
+            onclick="startRecording()"
+            style="width:48%;"
+        >
+            Start
+        </button>
+
+        <button
+            class="orange"
+            onclick="stopRecording()"
+            style="width:48%; float:right;"
+        >
+            Stop
+        </button>
+
+        <p id="status">
+            Status: idle
+        </p>
+
+        <p id="output">
+            Speech output will appear here...
+        </p>
+
+        <div id="historyBox"></div>
+
+    </div>
+
+</div>
+
+<script>
+
+let currentUser = null;
+
+let mediaRecorder;
+
+let audioChunks = [];
+
+// =====================
+// PASSWORD TOGGLE
+// =====================
+
+function toggleLoginPassword(){
+
+    let pass =
+    document.getElementById("loginPassword");
+
+    pass.type =
+    pass.type === "password"
+    ? "text"
+    : "password";
+}
+
+function toggleRegisterPassword(){
+
+    let pass =
+    document.getElementById("registerPassword");
+
+    pass.type =
+    pass.type === "password"
+    ? "text"
+    : "password";
+}
+
+// =====================
+// SHOW REGISTER
+// =====================
+
+function showRegister(){
+
+    document.getElementById(
+        "loginSection"
+    ).style.display = "none";
+
+    document.getElementById(
+        "registerSection"
+    ).style.display = "block";
+}
+
+// =====================
+// SHOW LOGIN
+// =====================
+
+function showLogin(){
+
+    document.getElementById(
+        "registerSection"
+    ).style.display = "none";
+
+    document.getElementById(
+        "loginSection"
+    ).style.display = "block";
+}
+
+// =====================
+// REGISTER
+// =====================
+
+async function register(){
+
+    const email =
+    document.getElementById(
+        "registerEmail"
+    ).value;
+
+    const password =
+    document.getElementById(
+        "registerPassword"
+    ).value;
+
+    const response = await fetch(
+        "/register",
+        {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json"
+            },
+
+            body:JSON.stringify({
+                email,
+                password
+            })
+        }
+    );
+
+    const data =
+    await response.json();
+
+    alert(data.message);
+
+    if(
+        data.message ===
+        "Registration successful"
+    ){
+        showLogin();
+    }
+}
+
+// =====================
+// LOGIN
+// =====================
+
+async function login(){
+
+    const email =
+    document.getElementById(
+        "loginEmail"
+    ).value;
+
+    const password =
+    document.getElementById(
+        "loginPassword"
+    ).value;
+
+    const response = await fetch(
+        "/login",
+        {
+
+            method:"POST",
+
+            headers:{
+                "Content-Type":"application/json"
+            },
+
+            body:JSON.stringify({
+                email,
+                password
+            })
+        }
+    );
+
+    const data =
+    await response.json();
+
+    if(data.success){
+
+        currentUser = email;
+
+        document.getElementById(
+            "loginSection"
+        ).style.display = "none";
+
+        document.getElementById(
+            "speechSection"
+        ).style.display = "block";
+
+        document.getElementById(
+            "welcomeText"
+        ).innerText =
+        "Welcome " + email;
+
+    }else{
+
+        alert(
+            "Username or Password is Wrong"
+        );
+    }
+}
+
+// =====================
+// LOGOUT
+// =====================
+
+function logout(){
+
+    currentUser = null;
+
+    document.getElementById(
+        "speechSection"
+    ).style.display = "none";
+
+    document.getElementById(
+        "loginSection"
+    ).style.display = "block";
+}
+
+// =====================
+// START RECORDING
+// =====================
+
+async function startRecording(){
+
+    document.getElementById(
+        "status"
+    ).innerText =
+    "Status: recording...";
+
+    const stream =
+    await navigator.mediaDevices
+    .getUserMedia({
+        audio:true
+    });
+
+    mediaRecorder =
+    new MediaRecorder(stream);
+
+    audioChunks = [];
+
+    mediaRecorder.ondataavailable =
+    event => {
+
+        audioChunks.push(event.data);
+    };
+
+    mediaRecorder.start();
+}
+
+// =====================
+// STOP RECORDING
+// =====================
+
+function stopRecording(){
+
+    mediaRecorder.stop();
+
+    mediaRecorder.onstop =
+    async () => {
+
+        document.getElementById(
+            "status"
+        ).innerText =
+        "Processing...";
+
+        const blob =
+        new Blob(
+            audioChunks,
+            {
+                type:"audio/webm"
+            }
+        );
+
+        const formData =
+        new FormData();
+
+        formData.append(
+            "audio",
+            blob,
+            "audio.webm"
+        );
+
+        formData.append(
+            "email",
+            currentUser
+        );
+
+        const response =
+        await fetch(
+            "/transcribe",
+            {
+                method:"POST",
+                body:formData
+            }
+        );
+
+        const data =
+        await response.json();
+
+        document.getElementById(
+            "status"
+        ).innerText =
+        "Done";
+
+        document.getElementById(
+            "output"
+        ).innerText =
+        data.text;
+    };
+}
+
+// =====================
+// HISTORY
+// =====================
+
+async function toggleHistory(){
+
+    const historyBox =
+    document.getElementById(
+        "historyBox"
+    );
+
+    if(
+        historyBox.style.display ===
+        "block"
+    ){
+
+        historyBox.style.display =
+        "none";
+
+        return;
+    }
+
+    const response =
+    await fetch(
+        "/history/" + currentUser
+    );
+
+    const data =
+    await response.json();
+
+    let html = "";
+
+    data.forEach(item => {
+
+        html += `
+
+        <div class="historyItem">
+
+            <b>${item.text}</b>
+
+            <br><br>
+
+            <small>
+                ${item.created_at}
+            </small>
+
+        </div>
+
+        `;
+    });
+
+    historyBox.innerHTML = html;
+
+    historyBox.style.display =
+    "block";
+}
+
+</script>
+
+</body>
+</html>
